@@ -3,6 +3,8 @@ module App where
 import Color
 import Mouse
 import Graphics.Input (..)
+import Debug
+import Signal
 
 hoveredItemInput = input Nothing
 
@@ -27,12 +29,16 @@ data Command
   = Move Int Int -- from, to
 
 step : Command -> Model -> Model
-step c (a::b::[]) = (b::a::[])
+step c m = case c of
+  Move from to -> if
+    | from == to -> m
+    | from < to -> take from m ++ (take (to-from) (drop (from+1) m)) ++ [head (drop from m)] ++ drop (to+1) m
+    | otherwise -> take to m ++ [head (drop from m)] ++ (take (from-to) (drop to m)) ++ (drop (from+1) m)
 
 scene : Model -> Maybe Item -> Element
 scene m x = flow down
   [ flow down (map e m)
-  , asText <| show x
+  , asText <| show <| Debug.watch "hovered" x
   ]
 
 modelSignal = constant model
@@ -40,4 +46,7 @@ modelSignal = constant model
 hoveredItem : Signal (Maybe Item)
 hoveredItem = hoveredItemInput.signal
 
-main = lift2 scene modelSignal hoveredItem
+dragSource : Signal (Maybe Item)
+dragSource = Signal.sampleOn Mouse.isDown hoveredItem
+
+main = lift2 scene modelSignal dragSource
