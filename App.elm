@@ -2,10 +2,16 @@ module App where
 
 import Color
 import Mouse
+import Graphics.Input (..)
 
-e (col,text) = plainText text |> color col |> width 400
+hoveredItemInput = input Nothing
 
-type Model = [(Color, String)]
+e (col,text) = plainText text |> color col
+  |> width 400
+  |> hoverable hoveredItemInput.handle (\b -> if b then Just (col,text) else Nothing)
+
+type Item = (Color, String)
+type Model = [Item]
 
 model : Model
 model =
@@ -23,22 +29,15 @@ data Command
 step : Command -> Model -> Model
 step c (a::b::[]) = (b::a::[])
 
-scene : Model -> Maybe (Color, String) -> Element
+scene : Model -> Maybe Item -> Element
 scene m x = flow down
   [ flow down (map e m)
   , asText <| show x
   ]
 
-findRow : (Int,Int) -> Model -> Maybe (Color, String)
-findRow (x,y) m =
-  case m of
-  (next::rest) -> 
-    let h = (heightOf (e next))
-    in if 
-      | y < h -> Just next
-      | otherwise -> findRow (x,y-h) rest
-  _ -> Nothing
-
 modelSignal = constant model
 
-main = lift2 scene modelSignal (lift2 findRow Mouse.position modelSignal)
+hoveredItem : Signal (Maybe Item)
+hoveredItem = hoveredItemInput.signal
+
+main = lift2 scene modelSignal hoveredItem
